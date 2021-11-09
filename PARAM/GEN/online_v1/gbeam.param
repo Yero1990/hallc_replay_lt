@@ -44,17 +44,27 @@ gbpmc_zpos = 129.38 ; cm
 ; Raster constants for pionlt Sept 5 2021
 gfr_cal_mom  = 9.203
 gfrxa_adc_zero_offset = 54290
-gfrxb_adc_zero_offset = 54290
+;gfrxb_adc_zero_offset = 54290
 gfrya_adc_zero_offset = 54290
-gfryb_adc_zero_offset = 54800
-;
-gfrxa_adcpercm = (66346-42290)/.2
-gfrxb_adcpercm = (64590-43750)/.2
-gfrya_adcpercm = -(65450-43750)/.2
-gfryb_adcpercm = -(64750-44860)/.2
+;gfryb_adc_zero_offset = 54800
 
- 
- 
+; C.Y Sep 28, 2021 | New FR-B Offsets (Using Run 12272)
+; following the hardware changes to Hall C Fast Raster --> https://logbooks.jlab.org/entry/3909088
+; Practically no change in the offsets
+gfrxb_adc_zero_offset = 54500.000
+gfryb_adc_zero_offset = 54881.500
+
+gfrxa_adcpercm = (66346-42290)/.2
+;gfrxb_adcpercm = (64590-43750)/.2
+gfrya_adcpercm = -(65450-43750)/.2
+;gfryb_adcpercm = -(64750-44860)/.2
+
+; C.Y Sep 28, 2021 | New FR-B adcpercm params  (Using Run 12272)
+; following the hardware changes to Hall C Fast Raster --> https://logbooks.jlab.org/entry/3909088
+; Note the raster size is still 2x2mm, but coils A were turned OFF, and coils B doubled in current
+gfrxb_adcpercm = (77552-31448)/.2
+gfryb_adcpercm = -(77132-32631)/.2 
+
 ; positions of FR magnets relative to target
   gfrx_dist  = 1375   ; cm
   gfry_dist  = 1337   ; cm
