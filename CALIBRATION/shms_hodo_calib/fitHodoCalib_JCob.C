@@ -29,7 +29,7 @@
 #include <TObjArray.h>
 #include <TF1.h>
 
-void fitHodoCalib(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALSE)
+void fitHodoCalib_JCob(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALSE)
 {
 
   gStyle->SetOptFit();  

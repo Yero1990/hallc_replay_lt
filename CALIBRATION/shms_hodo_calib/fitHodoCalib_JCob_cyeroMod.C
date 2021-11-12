@@ -64,7 +64,7 @@ void fitHodoCalib_JCob_cyeroMod(TString filename,Int_t runNUM,Bool_t cosmic_flag
   // C. Yero Nov 09, 2021 | Added velocity variation (phodo_velVar) about the set valued for hodoscope paddle velocity fits
   // If the fitted velocity is out of the boundary: phodo_velSet +/- phodo_velVar, the default velocity value (phodo_velSet) will be set accordingly.
   // UNITS: cm / ns
-  Double_t phodo_velVar = 1.0;  //this tolerance parameter can be changed to allow larger variations in the velocities.
+  Double_t phodo_velVar = 3.0;  //this tolerance parameter can be changed to allow larger variations in the velocities.
 
   // velocities set (determined by averaging the velocities over all relevant scintillator paddles that had sufficient statistics for a good fit)
   //                                S1X,   S1Y,   S2X,   S2Y
