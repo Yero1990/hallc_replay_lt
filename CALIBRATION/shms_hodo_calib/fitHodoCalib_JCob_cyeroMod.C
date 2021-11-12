@@ -605,7 +605,7 @@ void fitHodoCalib_JCob_cyeroMod(TString filename,Int_t runNUM,Bool_t cosmic_flag
 		    //C. Yero Nov 09, 2021  | Added Min/Max velocity constraints
 		    if(fit_status==-1 || phodo_velArr[0][ipmt] < phodo_velMin[0] || phodo_velArr[0][ipmt] > phodo_velMax[0] ) {
                            phodo_velArr[0][ipmt] = phodo_velSet[0];
-                           phodo_cableArr[0][ipmt] = 0.0;
+                           phodo_cableArr[0][ipmt] = fit1x->GetParameter(1); // 0.0; C. Yero Nov 12, 2021
                            phodo_sigArr[0][ipmt] = 1.0;
 			   cout << " Could not fit plane = " << npl << " paddle = " << ipmt +1 << endl;
                     } else {
@@ -618,7 +618,7 @@ void fitHodoCalib_JCob_cyeroMod(TString filename,Int_t runNUM,Bool_t cosmic_flag
 		    phodo_velArr[1][ipmt] = 1./(fit1y->GetParameter(0)); 
 		    if(fit_status==-1 || phodo_velArr[1][ipmt] < phodo_velMin[1] || phodo_velArr[1][ipmt] > phodo_velMax[1] ) {
                            phodo_velArr[1][ipmt] = phodo_velSet[1];
-                           phodo_cableArr[1][ipmt] = 0.0;
+                           phodo_cableArr[1][ipmt] = fit1y->GetParameter(1); //0.0;
                            phodo_sigArr[1][ipmt] = 1.0;
 			   cout << " Could not fit plane = " << npl << " paddle = " << ipmt +1 << endl;
                     } else {
@@ -630,7 +630,7 @@ void fitHodoCalib_JCob_cyeroMod(TString filename,Int_t runNUM,Bool_t cosmic_flag
 		    phodo_velArr[2][ipmt] = 1./(fit2x->GetParameter(0)); 
 		    if(fit_status==-1 || phodo_velArr[2][ipmt] < phodo_velMin[2] || phodo_velArr[2][ipmt] > phodo_velMax[2]) {
                           phodo_velArr[2][ipmt] = phodo_velSet[2];
-                           phodo_cableArr[2][ipmt] = 0.0;
+			  phodo_cableArr[2][ipmt] = fit2x->GetParameter(1); //0.0;
                            phodo_sigArr[2][ipmt] = 1.0;
 			   cout << " Could not fit plane = " << npl << " paddle = " << ipmt +1 << endl;
                     } else {
@@ -642,7 +642,7 @@ void fitHodoCalib_JCob_cyeroMod(TString filename,Int_t runNUM,Bool_t cosmic_flag
 		    phodo_velArr[3][ipmt] = 1./(fit2y->GetParameter(0));
 		    if(fit_status==-1 || phodo_velArr[3][ipmt] < phodo_velMin[3] || phodo_velArr[3][ipmt] > phodo_velMax[3]) {
                            phodo_velArr[3][ipmt] = phodo_velSet[3];
-                           phodo_cableArr[3][ipmt] = 0.0;
+                           phodo_cableArr[3][ipmt] = fit2y->GetParameter(1); //0.0;
                            phodo_sigArr[3][ipmt] = 1.0;
 			   cout << " Could not fit plane = " << npl << " paddle = " << ipmt +1 << endl;
                     } else {
