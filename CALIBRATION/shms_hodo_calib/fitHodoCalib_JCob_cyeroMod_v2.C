@@ -641,7 +641,7 @@ void fitHodoCalib_JCob_cyeroMod_v2(TString filename,Int_t runNUM,Bool_t cosmic_f
 		      cout << "" << endl;
 		      
 		      //Re-Fit TW Corr Time vs. Trk Pos		   
-		      fit_status = h2Hist_TW_Corr_v_TrkPos[npl][ipmt]->Fit("rfit1x", "QR");
+		      fit_status = h2Hist_TW_Corr_v_TrkPos[npl][ipmt]->Fit("rfit1x", "QR+");  // The '+' is to overlay fit with previous original fit
 		      rfit1x->SetLineColor(kBlack);
 		      rfit1x->SetLineStyle(9);
 		      
@@ -654,10 +654,10 @@ void fitHodoCalib_JCob_cyeroMod_v2(TString filename,Int_t runNUM,Bool_t cosmic_f
 		      TWDiff_v_TrkPos_canv[npl]->cd(ipmt+1);
 		      rfit1x->Draw();
 		            		      
-		      //Set the parameter values
+		      //Set the re-fit results parameter values
 		      phodo_velArr[npl][ipmt] = phodo_velSet[npl];
 		      phodo_cableArr[npl][ipmt] = rfit1x->GetParameter(0);
-		      phodo_sigArr[npl][ipmt] = 1.0;
+		      phodo_sigArr[npl][ipmt] = phodo_sigArr[npl][ipmt] / (2.*phodo_velSet[npl]);
 		      
 		      //Check fit status of re-fit 
 		      if(fit_status==-1) // fit failed a second time (most likely empy data histo, or non-operational channel)
@@ -701,7 +701,7 @@ void fitHodoCalib_JCob_cyeroMod_v2(TString filename,Int_t runNUM,Bool_t cosmic_f
 		      cout << "" << endl;
 		      
 		      //Re-Fit TW Corr Time vs. Trk Pos		   
-		      fit_status = h2Hist_TW_Corr_v_TrkPos[npl][ipmt]->Fit("rfit1y", "QR");
+		      fit_status = h2Hist_TW_Corr_v_TrkPos[npl][ipmt]->Fit("rfit1y", "QR+");
 		      rfit1y->SetLineColor(kBlack);
 		      rfit1y->SetLineStyle(9);
 		      
@@ -717,7 +717,7 @@ void fitHodoCalib_JCob_cyeroMod_v2(TString filename,Int_t runNUM,Bool_t cosmic_f
 		      //Set the parameter values
 		      phodo_velArr[npl][ipmt] = phodo_velSet[npl];
 		      phodo_cableArr[npl][ipmt] = rfit1y->GetParameter(0) ;
-		      phodo_sigArr[npl][ipmt] = 1.0;
+		      phodo_sigArr[npl][ipmt] = phodo_sigArr[npl][ipmt] / (2.*phodo_velSet[npl]);
 		      
 		      //Check fit status of re-fit                                                                                
                       if(fit_status==-1) // fit failed a second time (most likely empy data histo, or non-operational channel)      
@@ -764,7 +764,7 @@ void fitHodoCalib_JCob_cyeroMod_v2(TString filename,Int_t runNUM,Bool_t cosmic_f
 		      cout << "" << endl;
 		      
 		      //Re-Fit TW Corr Time vs. Trk Pos		   
-		      fit_status = h2Hist_TW_Corr_v_TrkPos[npl][ipmt]->Fit("rfit2x", "QR");
+		      fit_status = h2Hist_TW_Corr_v_TrkPos[npl][ipmt]->Fit("rfit2x", "QR+");
 		      rfit2x->SetLineColor(kBlack);
 		      rfit2x->SetLineStyle(9);
 		      
@@ -780,8 +780,8 @@ void fitHodoCalib_JCob_cyeroMod_v2(TString filename,Int_t runNUM,Bool_t cosmic_f
 		      //Set the parameter values
 		      phodo_velArr[npl][ipmt] = phodo_velSet[npl];
 		      phodo_cableArr[npl][ipmt] = rfit2x->GetParameter(0) ;
-		      phodo_sigArr[npl][ipmt] = 1.0;
-		      
+		      phodo_sigArr[npl][ipmt] = phodo_sigArr[npl][ipmt] / (2.*phodo_velSet[npl]);
+
 		      //Check fit status of re-fit                                                                                     
                       if(fit_status==-1) // fit failed a second time (most likely empy data histo, or non-operational channel)     
                         {                                                                                                         
@@ -826,7 +826,7 @@ void fitHodoCalib_JCob_cyeroMod_v2(TString filename,Int_t runNUM,Bool_t cosmic_f
 		      cout << "" << endl;
 		      
 		      //Re-Fit TW Corr Time vs. Trk Pos		   
-		      fit_status = h2Hist_TW_Corr_v_TrkPos[npl][ipmt]->Fit("rfit2y", "QR");
+		      fit_status = h2Hist_TW_Corr_v_TrkPos[npl][ipmt]->Fit("rfit2y", "QR+");
 		      rfit2y->SetLineColor(kBlack);
 		      rfit2y->SetLineStyle(9);
 		      
@@ -842,7 +842,7 @@ void fitHodoCalib_JCob_cyeroMod_v2(TString filename,Int_t runNUM,Bool_t cosmic_f
 		      //Set the parameter values
 		      phodo_velArr[npl][ipmt] = phodo_velSet[npl];
 		      phodo_cableArr[npl][ipmt] = rfit2y->GetParameter(0) ;
-		      phodo_sigArr[npl][ipmt] = 1.0;
+		      phodo_sigArr[npl][ipmt] = phodo_sigArr[npl][ipmt] / (2.*phodo_velSet[npl]);
 		      
 		      //Check fit status of re-fit                                           
                       if(fit_status==-1) // fit failed a second time (most likely empy data histo, or non-operational channel)          
