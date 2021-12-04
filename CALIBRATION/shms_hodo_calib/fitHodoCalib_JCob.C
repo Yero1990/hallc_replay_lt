@@ -333,7 +333,7 @@ void fitHodoCalib_JCob(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALSE)
   cout << "Initializing 1st Pass of Event Loop: " << endl;
   Long64_t evtCnt = 0;
 
-  Long64_t nentries = T->GetEntries();
+  Long64_t nentries = 100000;//T->GetEntries();
   
  //Loop over all entries
   for(Long64_t i=0; i<nentries; i++)

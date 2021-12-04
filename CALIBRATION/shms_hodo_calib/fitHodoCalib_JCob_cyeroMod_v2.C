@@ -29,7 +29,7 @@
 #include <TObjArray.h>
 #include <TF1.h>
 
-void fitHodoCalib_JCob_cyeroMod(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALSE)
+void fitHodoCalib_JCob_cyeroMod_v2(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALSE)
 {
 
   gStyle->SetOptFit();  
@@ -222,6 +222,19 @@ void fitHodoCalib_JCob_cyeroMod(TString filename,Int_t runNUM,Bool_t cosmic_flag
   TF1 *fit2x = new TF1("fit2x", "[0]*x + [1]", -40., 40.);                                                                                 
   TF1 *fit2y = new TF1("fit2y", "[0]*x + [1]", -40., 40.);                                                                             
 
+  /*  ---- 1D Re-Fit Function ----
+     C. Yero Dec. 3 2021 | 1D Fit Function for re-fitting TW_Corr vs. TrkPos (in case fit failed or was out velocity range)
+     This new fit function would be:  Y = m_fixed * X + b,  where m_fixed = 1 / phodo_velSet, and b is the y-intercept 
+     (cable time offset) which would be the ONLY fit parameter
+  */
+
+  TF1 *rfit1x = new TF1("rfit1x", Form("(1./%f) * x + [0]", phodo_velSet[0]), -40., 40.);
+  TF1 *rfit1y = new TF1("rfit1y", Form("(1./%f) * x + [0]", phodo_velSet[1]), -40., 40.);                                                                                                     
+  TF1 *rfit2x = new TF1("rfit2x", Form("(1./%f) * x + [0]", phodo_velSet[2]), -40., 40.);                                                                                 
+  TF1 *rfit2y = new TF1("rfit2y", Form("(1./%f) * x + [0]", phodo_velSet[3]), -40., 40.); 
+  
+
+
   //Set Param Values/Names
   fit1x->SetParameter(0, 1.), fit1x->SetParName(0, "slope");
   fit1x->SetParameter(1, 1.), fit1x->SetParName(1, "y-int");                                                                                                                                 
@@ -231,6 +244,13 @@ void fitHodoCalib_JCob_cyeroMod(TString filename,Int_t runNUM,Bool_t cosmic_flag
   fit2x->SetParameter(1, 1.), fit2x->SetParName(1, "y-int");  
   fit2y->SetParameter(0, 1.), fit2y->SetParName(0, "slope");           
   fit2y->SetParameter(1, 1.), fit2y->SetParName(1, "y-int"); 
+
+  //Set Param Values/Names for Re-Fit function
+  rfit1x->SetParameter(0, 1.), rfit1x->SetParName(0, "y-int");                                                                                                                                 
+  rfit1y->SetParameter(0, 1.), rfit1y->SetParName(0, "y-int");                                                                                                                                 
+  rfit2x->SetParameter(0, 1.), rfit2x->SetParName(0, "y-int");                                                                                                                                 
+  rfit2y->SetParameter(0, 1.), rfit2y->SetParName(0, "y-int");                                                                                                                                
+
   
   //Set PID 
   Bool_t pcal;
@@ -570,7 +590,8 @@ void fitHodoCalib_JCob_cyeroMod(TString filename,Int_t runNUM,Bool_t cosmic_flag
 		  //Fit TW Corr Time vs. Trk Pos
 		  if (npl==0)
 		    {
-		      fit_status = h2Hist_TW_Corr_v_TrkPos[npl][ipmt]->Fit("fit1x", "QR");  		    }
+		      fit_status = h2Hist_TW_Corr_v_TrkPos[npl][ipmt]->Fit("fit1x", "QR");
+		    }
 		  else if (npl==1)
 		    {   
 		      fit_status =  h2Hist_TW_Corr_v_TrkPos[npl][ipmt]->Fit("fit1y", "QR");     
@@ -586,7 +607,8 @@ void fitHodoCalib_JCob_cyeroMod(TString filename,Int_t runNUM,Bool_t cosmic_flag
 		  		  
 		  TWDiff_v_TrkPos_canv[npl]->cd(ipmt+1);
 		  h2Hist_TWDiff_v_TrkPos[npl][ipmt]->Draw("colz");
-		  
+		 
+
 		  TWAvg_canv_2D[npl]->cd(ipmt+1);
 		  h2Hist_TWAvg_v_TrkPos[npl][ipmt]->Draw("colz");
 		  
@@ -601,81 +623,251 @@ void fitHodoCalib_JCob_cyeroMod(TString filename,Int_t runNUM,Bool_t cosmic_flag
 		  h1Hist_TWDiffTrkPos[npl][ipmt]->Draw();
 				  	  
 		  if (npl==0) {
-		    phodo_velArr[0][ipmt] = 1./(fit1x->GetParameter(0));
+		    phodo_velArr[npl][ipmt] = 1./(fit1x->GetParameter(0));
 		    //C. Yero Nov 09, 2021  | Added Min/Max velocity constraints
-		    //if fit failed
-		    if(fit_status==-1) {
-		      phodo_velArr[0][ipmt] = phodo_velSet[0];
-		      phodo_cableArr[0][ipmt] =  0.0;
-		      phodo_sigArr[0][ipmt] = 1.0;
-		      cout << " Could not fit plane = " << npl << " paddle = " << ipmt +1 << endl;
-                    } 	 
-		    // if fit velocity is out-of-range
-		    else if(phodo_velArr[0][ipmt] < phodo_velMin[0] || phodo_velArr[0][ipmt] > phodo_velMax[0]){
-		      phodo_velArr[0][ipmt] = phodo_velSet[0];
-		      phodo_cableArr[0][ipmt] = fit1x->GetParameter(1);
-		      phodo_sigArr[0][ipmt] = 1.0;    
-		    }
+		    //if fit failed "OR" if fit velocity is out-of-range
+		    if(fit_status==-1 || (phodo_velArr[npl][ipmt] < phodo_velMin[npl] || phodo_velArr[npl][ipmt] > phodo_velMax[npl]) ) {
+		      
+		      
+		      cout << Form("PLANE 1X, PADDLE %d : fit velocity, %.3f cm/ns is out-of-range [%.3f, %.3f] cm/ns ", (ipmt+1), phodo_velArr[npl][ipmt], phodo_velMin[npl], phodo_velMax[npl] ) << endl;
+		      cout <<    "***********************" << endl;
+		      cout << "" << endl;
+		      cout << Form("---- PLANE 1X, PADDLE %d : ORIGINAL FIT RESULTS ----", ipmt+1) << endl;                                                                                                                               
+		      cout << Form("phodo_velocity (1/fit_slope) = %.3f ", phodo_velArr[npl][ipmt]) << endl;                                                                                                                     
+		      cout << Form("phodo_cable_offset (y-int.) = %.3f", fit1x->GetParameter(1)) << endl;                                                                                                                                                
+		      cout << "-------------------------------" << endl;   
+		      cout << "" << endl;
+		      cout << Form(" Will try re-fitting line with fit function: Y = 1 / (%.3f cm/ns) * X + b", phodo_velSet[npl] ) << endl;
+		      cout << "" << endl;
+		      
+		      //Re-Fit TW Corr Time vs. Trk Pos		   
+		      fit_status = h2Hist_TW_Corr_v_TrkPos[npl][ipmt]->Fit("rfit1x", "QR");
+		      rfit1x->SetLineColor(kBlack);
+		      rfit1x->SetLineStyle(9);
+		      
+		      cout << Form("---- PLANE 1X, PADDLE %d : RE-FIT RESULTS ----", ipmt+1) << endl;
+		      cout << Form("phodo_velocity (1/fit_slope) = %.3f ", phodo_velSet[npl]) << endl;
+		      cout << Form("phodo_cable_offset (y-int.) = %.3f", rfit1x->GetParameter(0)) << endl;
+		      cout << "-------------------------------" << endl;  
+		      cout << "" << endl;
+		      
+		      TWDiff_v_TrkPos_canv[npl]->cd(ipmt+1);
+		      rfit1x->Draw();
+		            		      
+		      //Set the parameter values
+		      phodo_velArr[npl][ipmt] = phodo_velSet[npl];
+		      phodo_cableArr[npl][ipmt] = rfit1x->GetParameter(0);
+		      phodo_sigArr[npl][ipmt] = 1.0;
+		      
+		      //Check fit status of re-fit 
+		      if(fit_status==-1) // fit failed a second time (most likely empy data histo, or non-operational channel)
+			{
+			  phodo_velArr[npl][ipmt] = phodo_velSet[npl];                             
+			  phodo_cableArr[npl][ipmt] = 0.0;                                                           
+			  phodo_sigArr[npl][ipmt] = 1.0;  
+			}
+		    }		    
+		    
 		    // if fit is good (i.e., within range)
 		    else {
+		      
+		      cout << "" << endl;
+		      cout << Form("---- PLANE 1X, PADDLE %d : VALID FIT RESULTS ----", ipmt+1) << endl;                                                                                            
+                      cout << Form("phodo_velocity (1/fit_slope) = %.3f cm/ns", phodo_velArr[0][ipmt]) << endl;    
+		      cout << Form("phodo_cable_offset (y-int.) = %.3f ns", fit1x->GetParameter(1)) << endl; 
+		      cout << "-------------------------------" << endl;
+		      cout << "" << endl;
+		      
 		      phodo_cableArr[0][ipmt] = fit1x->GetParameter(1);
 		      phodo_sigArr[0][ipmt] = phodo_sigArr[0][ipmt] / (2.*phodo_velArr[0][ipmt]);
 		    }		  		  
 		  }
 		  
 		  else if (npl==1) { 
-		    phodo_velArr[1][ipmt] = 1./(fit1y->GetParameter(0)); 
-		    if(fit_status==-1) {
-		      phodo_velArr[1][ipmt] = phodo_velSet[1];
-		      phodo_cableArr[1][ipmt] = 0.0; 
-		      phodo_sigArr[1][ipmt] = 1.0;
-		      cout << " Could not fit plane = " << npl << " paddle = " << ipmt +1 << endl;
-                    } 
-		    else if(phodo_velArr[1][ipmt] < phodo_velMin[1] || phodo_velArr[1][ipmt] > phodo_velMax[1]){
-		      phodo_velArr[1][ipmt] = phodo_velSet[1];
-		      phodo_cableArr[1][ipmt] = fit1y->GetParameter(1);
-		      phodo_sigArr[1][ipmt] = 1.0; 
-		    }
-		    else {
-		      phodo_cableArr[1][ipmt] = fit1y->GetParameter(1);
-		      phodo_sigArr[1][ipmt] = phodo_sigArr[1][ipmt] / (2.*phodo_velArr[1][ipmt]);
-		    }
-		  }
-		  else if (npl==2) { 
-		    phodo_velArr[2][ipmt] = 1./(fit2x->GetParameter(0)); 
-		    if(fit_status==-1) {
-		      phodo_velArr[2][ipmt] = phodo_velSet[2];
-		      phodo_cableArr[2][ipmt] = 0.0;
-		      phodo_sigArr[2][ipmt] = 1.0;
-		      cout << " Could not fit plane = " << npl << " paddle = " << ipmt +1 << endl;
-                    } 
-		    else if( phodo_velArr[2][ipmt] < phodo_velMin[2] || phodo_velArr[2][ipmt] > phodo_velMax[2] ){
-		      phodo_velArr[2][ipmt] = phodo_velSet[2]; 
-		      phodo_cableArr[2][ipmt] = fit2x->GetParameter(1);
-		    }
-		    else {
-		    phodo_cableArr[2][ipmt] = fit2x->GetParameter(1);
-		    phodo_sigArr[2][ipmt] = phodo_sigArr[2][ipmt] / (2.*phodo_velArr[2][ipmt]);
-		    }
-		  }
-		  else if (npl==3) { 
-		    phodo_velArr[3][ipmt] = 1./(fit2y->GetParameter(0));
-		    if(fit_status==-1) {
-		      phodo_velArr[3][ipmt] = phodo_velSet[3];
-		      phodo_cableArr[3][ipmt] = 0.0;
-		      phodo_sigArr[3][ipmt] = 1.0;
-		      cout << " Could not fit plane = " << npl << " paddle = " << ipmt +1 << endl;
-                    } 
-		    else if( phodo_velArr[3][ipmt] < phodo_velMin[3] || phodo_velArr[3][ipmt] > phodo_velMax[3] ){
-		      phodo_velArr[3][ipmt] = phodo_velSet[3];
-		      phodo_cableArr[3][ipmt] = fit2y->GetParameter(1); 
-		      phodo_sigArr[3][ipmt] = 1.0; 
+		    phodo_velArr[npl][ipmt] = 1./(fit1y->GetParameter(0)); 
+		    
+		    if(fit_status==-1 || (phodo_velArr[npl][ipmt] < phodo_velMin[npl] || phodo_velArr[npl][ipmt] > phodo_velMax[npl]) ) {
+		      
+		      
+		      cout << Form("PLANE 1Y, PADDLE %d : fit velocity, %.3f cm/ns is out-of-range [%.3f, %.3f] cm/ns ", (ipmt+1), phodo_velArr[npl][ipmt], phodo_velMin[npl], phodo_velMax[npl] ) << endl;
+		      cout <<    "***********************" << endl;
+		      cout << "" << endl;
+		      cout << Form("---- PLANE 1Y, PADDLE %d : ORIGINAL FIT RESULTS ----", ipmt+1) << endl;                                                                                                                               
+		      cout << Form("phodo_velocity (1/fit_slope) = %.3f ", phodo_velArr[npl][ipmt]) << endl;                                                                                                                     
+		      cout << Form("phodo_cable_offset (y-int.) = %.3f", fit1y->GetParameter(1)) << endl;                                                                                                                                                
+		      cout << "-------------------------------" << endl;   
+		      cout << "" << endl;
+		      cout << Form(" Will try re-fitting line with fit function: Y = 1 / (%.3f cm/ns) * X + b", phodo_velSet[npl] ) << endl;
+		      cout << "" << endl;
+		      
+		      //Re-Fit TW Corr Time vs. Trk Pos		   
+		      fit_status = h2Hist_TW_Corr_v_TrkPos[npl][ipmt]->Fit("rfit1y", "QR");
+		      rfit1y->SetLineColor(kBlack);
+		      rfit1y->SetLineStyle(9);
+		      
+		      cout << Form("---- PLANE 1Y, PADDLE %d : RE-FIT RESULTS ----", ipmt+1) << endl;
+		      cout << Form("phodo_velocity (1/fit_slope) = %.3f ", phodo_velSet[npl]) << endl;
+		      cout << Form("phodo_cable_offset (y-int.) = %.3f", rfit1y->GetParameter(0)) << endl;
+		      cout << "-------------------------------" << endl;  
+		      cout << "" << endl;
+		      
+		      TWDiff_v_TrkPos_canv[npl]->cd(ipmt+1);
+		      rfit1y->Draw();
+		            		      
+		      //Set the parameter values
+		      phodo_velArr[npl][ipmt] = phodo_velSet[npl];
+		      phodo_cableArr[npl][ipmt] = rfit1y->GetParameter(0) ;
+		      phodo_sigArr[npl][ipmt] = 1.0;
+		      
+		      //Check fit status of re-fit                                                                                
+                      if(fit_status==-1) // fit failed a second time (most likely empy data histo, or non-operational channel)      
+                        {                                                                                                           
+                          phodo_velArr[npl][ipmt] = phodo_velSet[npl];                                                             
+                          phodo_cableArr[npl][ipmt] = 0.0;                                                                          
+                          phodo_sigArr[npl][ipmt] = 1.0;                                                                                 
+                        } 
+
 		    }		    
+		    
 		    else {
-		         phodo_cableArr[3][ipmt] = fit2y->GetParameter(1);
-		         phodo_sigArr[3][ipmt] = phodo_sigArr[3][ipmt] / (2.*phodo_velArr[3][ipmt]);
+
+		      cout << "" << endl;
+		      cout << Form("---- PLANE 1Y, PADDLE %d : VALID FIT RESULTS ----", ipmt+1) << endl;                                                                                            
+                      cout << Form("phodo_velocity (1/fit_slope) = %.3f cm/ns", phodo_velArr[npl][ipmt]) << endl;    
+		      cout << Form("phodo_cable_offset (y-int.) = %.3f ns", fit1y->GetParameter(1)) << endl; 
+		      cout << "-------------------------------" << endl;
+		      cout << "" << endl;
+		      
+		      phodo_cableArr[npl][ipmt] = fit1y->GetParameter(1);
+		      phodo_sigArr[npl][ipmt] = phodo_sigArr[npl][ipmt] / (2.*phodo_velArr[npl][ipmt]);
 		    }
+
 		  }
+
+		  
+		  else if (npl==2) {
+		    
+		    phodo_velArr[npl][ipmt] = 1./(fit2x->GetParameter(0)); 
+
+		     if(fit_status==-1 || (phodo_velArr[npl][ipmt] < phodo_velMin[npl] || phodo_velArr[npl][ipmt] > phodo_velMax[npl]) ) {
+		      
+		      
+		      cout << Form("PLANE 2X, PADDLE %d : fit velocity, %.3f cm/ns is out-of-range [%.3f, %.3f] cm/ns ", (ipmt+1), phodo_velArr[npl][ipmt], phodo_velMin[npl], phodo_velMax[npl] ) << endl;
+		      cout <<    "***********************" << endl;
+		      cout << "" << endl;
+		      cout << Form("---- PLANE 2X, PADDLE %d : ORIGINAL FIT RESULTS ----", ipmt+1) << endl;                                                                                                                               
+		      cout << Form("phodo_velocity (1/fit_slope) = %.3f ", phodo_velArr[npl][ipmt]) << endl;                                                                                                                     
+		      cout << Form("phodo_cable_offset (y-int.) = %.3f", fit2x->GetParameter(1)) << endl;                                                                                                                                                
+		      cout << "-------------------------------" << endl;   
+		      cout << "" << endl;
+		      cout << Form(" Will try re-fitting line with fit function: Y = 1 / (%.3f cm/ns) * X + b", phodo_velSet[npl] ) << endl;
+		      cout << "" << endl;
+		      
+		      //Re-Fit TW Corr Time vs. Trk Pos		   
+		      fit_status = h2Hist_TW_Corr_v_TrkPos[npl][ipmt]->Fit("rfit2x", "QR");
+		      rfit2x->SetLineColor(kBlack);
+		      rfit2x->SetLineStyle(9);
+		      
+		      cout << Form("---- PLANE 2X, PADDLE %d : RE-FIT RESULTS ----", ipmt+1) << endl;
+		      cout << Form("phodo_velocity (1/fit_slope) = %.3f ", phodo_velSet[npl]) << endl;
+		      cout << Form("phodo_cable_offset (y-int.) = %.3f", rfit2x->GetParameter(0)) << endl;
+		      cout << "-------------------------------" << endl;  
+		      cout << "" << endl;
+		      
+		      TWDiff_v_TrkPos_canv[npl]->cd(ipmt+1);
+		      rfit2x->Draw();
+		            		      
+		      //Set the parameter values
+		      phodo_velArr[npl][ipmt] = phodo_velSet[npl];
+		      phodo_cableArr[npl][ipmt] = rfit2x->GetParameter(0) ;
+		      phodo_sigArr[npl][ipmt] = 1.0;
+		      
+		      //Check fit status of re-fit                                                                                     
+                      if(fit_status==-1) // fit failed a second time (most likely empy data histo, or non-operational channel)     
+                        {                                                                                                         
+                          phodo_velArr[npl][ipmt] = phodo_velSet[npl];                                                         
+                          phodo_cableArr[npl][ipmt] = 0.0;                                                                          
+                          phodo_sigArr[npl][ipmt] = 1.0;                                                                              
+                        } 
+		      
+		     }		    
+		    		    
+		    else {
+		      cout << Form("---- PLANE 2X, PADDLE %d : VALID FIT RESULTS ----", ipmt+1) << endl;           
+                      cout << Form("phodo_velocity (1/fit_slope) = %.3f cm/ns", phodo_velArr[npl][ipmt]) << endl;    
+		      cout << Form("phodo_cable_offset (y-int.) = %.3f ns", fit2x->GetParameter(1)) << endl; 
+		      cout << "-------------------------------" << endl;
+		      cout << "" << endl;
+		      
+		    phodo_cableArr[npl][ipmt] = fit2x->GetParameter(1);
+		    phodo_sigArr[npl][ipmt] = phodo_sigArr[npl][ipmt] / (2.*phodo_velArr[npl][ipmt]);
+
+		    }
+		    
+
+		  }
+		  
+		  else if (npl==3) {
+		    
+		    phodo_velArr[npl][ipmt] = 1./(fit2y->GetParameter(0));
+		    
+		    if(fit_status==-1 || (phodo_velArr[npl][ipmt] < phodo_velMin[npl] || phodo_velArr[npl][ipmt] > phodo_velMax[npl]) ) {
+		      
+		      
+		      cout << Form("PLANE 2Y, PADDLE %d : fit velocity, %.3f cm/ns is out-of-range [%.3f, %.3f] cm/ns ", (ipmt+1), phodo_velArr[npl][ipmt], phodo_velMin[npl], phodo_velMax[npl] ) << endl;
+		      cout <<    "***********************" << endl;
+		      cout << "" << endl;
+		      cout << Form("---- PLANE 2Y, PADDLE %d : ORIGINAL FIT RESULTS ----", ipmt+1) << endl;                                                                                                                               
+		      cout << Form("phodo_velocity (1/fit_slope) = %.3f ", phodo_velArr[npl][ipmt]) << endl;                                                                                                                     
+		      cout << Form("phodo_cable_offset (y-int.) = %.3f", fit2y->GetParameter(1)) << endl;                                                                                                                                                
+		      cout << "-------------------------------" << endl;   
+		      cout << "" << endl;
+		      cout << Form(" Will try re-fitting line with fit function: Y = 1 / (%.3f cm/ns) * X + b", phodo_velSet[npl] ) << endl;
+		      cout << "" << endl;
+		      
+		      //Re-Fit TW Corr Time vs. Trk Pos		   
+		      fit_status = h2Hist_TW_Corr_v_TrkPos[npl][ipmt]->Fit("rfit2y", "QR");
+		      rfit2y->SetLineColor(kBlack);
+		      rfit2y->SetLineStyle(9);
+		      
+		      cout << Form("---- PLANE 2Y, PADDLE %d : RE-FIT RESULTS ----", ipmt+1) << endl;
+		      cout << Form("phodo_velocity (1/fit_slope) = %.3f ", phodo_velSet[npl]) << endl;
+		      cout << Form("phodo_cable_offset (y-int.) = %.3f", rfit2y->GetParameter(0)) << endl;
+		      cout << "-------------------------------" << endl;  
+		      cout << "" << endl;
+		      
+		      TWDiff_v_TrkPos_canv[npl]->cd(ipmt+1);
+		      rfit2y->Draw();
+		            		      
+		      //Set the parameter values
+		      phodo_velArr[npl][ipmt] = phodo_velSet[npl];
+		      phodo_cableArr[npl][ipmt] = rfit2y->GetParameter(0) ;
+		      phodo_sigArr[npl][ipmt] = 1.0;
+		      
+		      //Check fit status of re-fit                                           
+                      if(fit_status==-1) // fit failed a second time (most likely empy data histo, or non-operational channel)          
+                        {                                                                                                             
+                          phodo_velArr[npl][ipmt] = phodo_velSet[npl];                                   
+                          phodo_cableArr[npl][ipmt] = 0.0;                                                                               
+                          phodo_sigArr[npl][ipmt] = 1.0;                                                                              
+                        } 
+		    
+		    }
+		    
+		    else {	
+		      cout << Form("---- PLANE 2Y, PADDLE %d : VALID FIT RESULTS ----", ipmt+1) << endl;                            
+		      cout << Form("phodo_velocity (1/fit_slope) = %.3f cm/ns", phodo_velArr[npl][ipmt]) << endl;    
+		      cout << Form("phodo_cable_offset (y-int.) = %.3f ns", fit2y->GetParameter(1)) << endl; 
+		      cout << "-------------------------------" << endl;
+		      cout << "" << endl;
+		      
+		      phodo_cableArr[npl][ipmt] = fit2y->GetParameter(1);
+		      phodo_sigArr[npl][ipmt] = phodo_sigArr[npl][ipmt] / (2.*phodo_velArr[npl][ipmt]);
+
+		    }
+
+		  }
+		  
 	
 		} //end single SIDE requirement
 	      
