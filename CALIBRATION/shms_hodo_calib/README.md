@@ -1,4 +1,4 @@
-B# Hall C SHMS Hodo Calibration Codes
+# Hall C SHMS Hodo Calibration Codes
 
 A set of ROOT scripts to determine the time offset parameters for the SHMS hodoscope. To use these parameters a  parameter flag ptofusinginvadc is set to 0. The first script determines the time walk correction factor. The next script determines the effective propagation speeed in the paddle, the time difference between the positive and negative PMTs and then the relative time difference of all paddles compared to paddle 7 in plane S1X.
 

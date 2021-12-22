@@ -40,7 +40,12 @@ static const UInt_t nSides     = 2;
 static const UInt_t nBarsMax   = 21;
 static const UInt_t nTwFitPars = 2;
 
-static const Double_t tdcThresh      = 12000.0;  // 30 mV in units of FADC channels
+//C.Y. Dec 09, 2021 | use tdcThresh parameter for scints and quartz independenly
+static const Double_t tdcThresh  = 120.0;
+
+//static const Double_t tdcThresh_scint  = 1200.0;  //  units of FADC channels
+//static const Double_t tdcThresh_quartz = 1200.0;  // units of FADC channels   
+
 static const Double_t twFitRangeLow  = 20.0;
 static const Double_t twFitRangeHigh = 300.0;
 static const Double_t c0twParInit    = 1.0;
@@ -130,10 +135,22 @@ TCanvas *makeCan(UInt_t numColumns, UInt_t numRows, UInt_t winWidth, UInt_t winH
 } // makeCan()
 
 // Define the time-walk fit function
-Double_t twFitFunc(Double_t *a, Double_t *c) {
-  Double_t twFitVal = c[0]+1./(TMath::Power((a[0]/tdcThresh), c[1] ));
+Double_t twFitFunc(Double_t *a, Double_t *c) {                                                                                                                                                                  
+  Double_t twFitVal = c[0]+1./(TMath::Power((a[0]/tdcThresh), c[1] ));                                                                                                                                             
+  return twFitVal;                                                                                                                                                                                                               
+} // twFitFunc()  
+
+/*
+Double_t twFitFunc_scint(Double_t *a, Double_t *c) {
+  Double_t twFitVal = c[0]+1./(TMath::Power((a[0]/tdcThresh_scint), c[1] ));
   return twFitVal;
 } // twFitFunc()
+
+Double_t twFitFunc_quartz(Double_t *a, Double_t *c) {   
+  Double_t twFitVal = c[0]+1./(TMath::Power((a[0]/tdcThresh_quartz), c[1] ));                              
+  return twFitVal;                                                                                         
+} // twFitFunc()           
+*/   
 
 // Locate min or max value from input array
 Double_t calcMinOrMax(Double_t *array, UInt_t iplane, TString minOrmax) {
@@ -155,8 +172,19 @@ void doTwFits(UInt_t iplane, UInt_t iside, UInt_t ipaddle) {
   h2_adcTdcTimeDiffWalk[iplane][iside][ipaddle]->Draw("COLZ");
   gPad->Modified(); gPad->Update();
   
-  // Declare and initialize the fits
-  twFit[iplane][iside][ipaddle] = new TF1("twFit", twFitFunc, twFitRangeLow, twFitRangeHigh, nTwFitPars);
+  // Declare and initialize the fits                                                                                                                                                                                                                    
+  twFit[iplane][iside][ipaddle] = new TF1("twFit", twFitFunc, twFitRangeLow, twFitRangeHigh, nTwFitPars);                                                                                                                             
+  
+  /*
+  // only scint
+  if(iplane!=3){
+    twFit[iplane][iside][ipaddle] = new TF1("twFit", twFitFunc_scint, twFitRangeLow, twFitRangeHigh, nTwFitPars);
+  }
+  // only quartz
+  else if(iplane==3){
+    twFit[iplane][iside][ipaddle] = new TF1("twFit", twFitFunc_quartz, twFitRangeLow, twFitRangeHigh, nTwFitPars);
+  }
+  */
   for (UInt_t ipar = 0; ipar < nTwFitPars; ipar++)
     twFit[iplane][iside][ipaddle]->SetParName(ipar, twFitParNames[ipar]);
   twFit[iplane][iside][ipaddle]->SetParameter(0,c0twParInit);
@@ -315,7 +343,9 @@ void WriteFitParam(int runNUM)
   outParam.open(outPar_Name);
   outParam << Form(";SHMS Hodoscopes Time Walk Output Parameter File: Run %d", runNUM) << endl;
   outParam << " " << endl;
-  outParam << "pTDC_threshold=" << tdcThresh  << " ;units of mV" <<endl;
+  outParam << "pTDC_threshold =" << tdcThresh << " ;units of mV" <<endl;          
+  //outParam << "pTDC_threshold_scint  =" << tdcThresh_scint  << " ;units of mV" <<endl;
+  //outParam << "pTDC_threshold_quartz =" << tdcThresh_quartz  << " ;units of mV" <<endl;
   outParam << " " << endl;
 
   //Fill 3D Par array

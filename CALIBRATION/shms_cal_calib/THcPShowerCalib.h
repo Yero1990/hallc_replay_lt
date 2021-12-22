@@ -45,13 +45,13 @@ bool CollCut(double xptar , double ytar, double yptar, double delta);
 //
 
 class THcPShowerCalib {
-
+  
  public:
-
+  
   THcPShowerCalib(string, int,  int, int);
   THcPShowerCalib();
   ~THcPShowerCalib();
-
+  
   void ReadThresholds();
   void Init();
   bool ReadShRawTrack(THcPShTrack &trk, UInt_t ientry);
@@ -61,7 +61,7 @@ class THcPShowerCalib {
   void FillHEcal();
   void SaveAlphas();
   void SaveRawData();
-
+  
   TH1F* hEunc;
   TH1F* hEuncSel;
   TH1F* hEcal;
@@ -72,9 +72,9 @@ class THcPShowerCalib {
   TH2F* hETOTvsEPR;
   TH2F* hETOTvsEPRunc;
   TH2F* hESHvsEPRunc;
-
+ 
  private:
-
+  
   string fPrefix;
   Int_t fRunNumber;
   Double_t fLoThr;     // Low and high thresholds on the normalized uncalibrated
@@ -344,7 +344,7 @@ void THcPShowerCalib::Init() {
 
   gROOT->Reset();
 
-  char* fname = Form("ROOTfiles/%s_%d_%d.root",fPrefix.c_str(), fRunNumber, fNstopRequested);
+  char* fname = Form("ROOTfiles/%s",fPrefix.c_str());
   cout << "THcPShowerCalib::Init: Root file name = " << fname << endl;
 
   TFile *f = new TFile(fname);

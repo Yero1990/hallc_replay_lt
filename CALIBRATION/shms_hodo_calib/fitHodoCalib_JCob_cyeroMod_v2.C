@@ -37,7 +37,7 @@ void fitHodoCalib_JCob_cyeroMod_v2(TString filename,Int_t runNUM,Bool_t cosmic_f
 
 
   // changed this from 30000 N.H. 10 Sept 2021
-  Int_t evtNUM = 3000000; // evtNUm is max number in the fit array
+  Int_t evtNUM = 300000; // evtNUm is max number in the fit array
   TFile *data_file = new TFile(filename, "READ"); 
   TTree *T = (TTree*)data_file->Get("T");
 
@@ -69,7 +69,7 @@ void fitHodoCalib_JCob_cyeroMod_v2(TString filename,Int_t runNUM,Bool_t cosmic_f
   // velocities set (determined by averaging the velocities over all relevant scintillator paddles that had sufficient statistics for a good fit)
   //                                S1X,   S1Y,   S2X,   S2Y
   // Out-of-bounds velocities from a failed fit or low statistics will be set to phodo_velSet
-  Double_t phodo_velSet[PLANES] = {15.75, 15.75, 15.75, 14.00};  //good averaged velocities to be used, in case that fit fails or is out of range
+  Double_t phodo_velSet[PLANES] = {15.75, 15.75, 15.75, 14.0};  //good averaged velocities to be used, in case that fit fails or is out of range
 
   //velocity Min/Max boundaries 
   Double_t phodo_velMin[PLANES] = {phodo_velSet[0]-phodo_velVar, phodo_velSet[1]-phodo_velVar, phodo_velSet[2]-phodo_velVar, phodo_velSet[3]-phodo_velVar};
@@ -98,13 +98,14 @@ void fitHodoCalib_JCob_cyeroMod_v2(TString filename,Int_t runNUM,Bool_t cosmic_f
   
   TString npcal_etrkNorm = "P.cal.etracknorm";
   TString npngcer_npeSum = "P.hgcer.npeSum";
+  //TString npngcer_npeSum = "P.ngcer.npeSum";                                                                          
   TString npdc_ntrack = "P.dc.ntrack";
   TString nhod_nhits = "nhits";
   TString nbeta = "P.hod.betanotrack";
 
-  Double_t etrknrm_low_cut = 0.9; //0.7
-  Double_t npngcer_npeSum_low_cut = 5; //0.7
-  Double_t betanotrack_low_cut = 0.2;
+  Double_t etrknrm_low_cut = 0.85;
+  Double_t npngcer_npeSum_low_cut = 0.5;
+  Double_t betanotrack_low_cut = 0.5;
   Double_t betanotrack_hi_cut = 1.5;
 
   if (cosmic_flag) betanotrack_low_cut = -1.2;
@@ -381,7 +382,7 @@ void fitHodoCalib_JCob_cyeroMod_v2(TString filename,Int_t runNUM,Bool_t cosmic_f
       pngcer = pngcer_npeSum>npngcer_npeSum_low_cut;
       pdctrk = pdc_ntrack>0.0;
       betaCut = beta>betanotrack_low_cut&& beta<betanotrack_hi_cut;
-        pid_pelec = pcal&&pngcer&&pdctrk;
+      pid_pelec = pcal&&pngcer&&pdctrk;
       if (cosmic_flag)  pid_pelec = betaCut&&pdctrk; 
        //Apply PID ELECTRON CUT
       if(pid_pelec)
@@ -395,7 +396,7 @@ void fitHodoCalib_JCob_cyeroMod_v2(TString filename,Int_t runNUM,Bool_t cosmic_f
 	      for (Int_t ipmt = 0; ipmt < maxPMT[npl]; ipmt++)
 		{	        
 		  
-		  if(TdcTimeTWCorr[npl][0][ipmt] < 200. && TdcTimeTWCorr[npl][1][ipmt] < 200. && pcal_etrkNorm>0.7)
+		  if(TdcTimeTWCorr[npl][0][ipmt] < 200. && TdcTimeTWCorr[npl][1][ipmt] < 200. && pcal_etrkNorm>etrknrm_low_cut)
 		    {
 		      //Fill Average TW Corr TDC Time
 		      h1Hist_TWAvg[npl][ipmt]->Fill((TdcTimeTWCorr[npl][0][ipmt] + TdcTimeTWCorr[npl][1][ipmt])/2.);
@@ -428,7 +429,7 @@ void fitHodoCalib_JCob_cyeroMod_v2(TString filename,Int_t runNUM,Bool_t cosmic_f
       T->GetEntry(i);  
       
       pcal = pcal_etrkNorm>etrknrm_low_cut;
-      pngcer = pngcer_npeSum<npngcer_npeSum_low_cut&&pngcer_npeSum>0; //JM 31-10-21: Added in npeSum > 0 requirement
+      pngcer = pngcer_npeSum>npngcer_npeSum_low_cut; //C.Y. Dec 12, 2021: put ONLY min cut requirement  |  JM 31-10-21: Added in npeSum > 0 requirement
       pdctrk = pdc_ntrack>0.0;
       betaCut = beta>betanotrack_low_cut&& beta<betanotrack_hi_cut;
       pid_pelec = pcal&&pngcer&&pdctrk;
@@ -997,8 +998,11 @@ void fitHodoCalib_JCob_cyeroMod_v2(TString filename,Int_t runNUM,Bool_t cosmic_f
 		//loop over paddles
 		for (Int_t bar = 1; bar <= maxPMT[npl]; bar++ )
 		  {
+
+		    //Dec. 17, 2021 C.Y.  increse the cuts, as it seems after hodo alignment, this need to be expanded to at least 125
+		    // Also,  why is it we are only applying a upper cut, and NOT a lower cut?
 		    //require good tdc hit on both ends
-		    goodhit[npl] =  TdcTimeTWCorr[npl][0][bar-1]<100.&&TdcTimeTWCorr[npl][1][bar-1]<100.;
+		    goodhit[npl] =  TdcTimeTWCorr[npl][0][bar-1]<125.&&TdcTimeTWCorr[npl][1][bar-1]<125.;
 		    
 		    //count if each plane had good tdc hit
 		    if (goodhit[npl]) {

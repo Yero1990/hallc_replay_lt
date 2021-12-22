@@ -38,9 +38,9 @@ static const UInt_t nSides     = 2;
 static const UInt_t nBarsMax   = 21;
 static const UInt_t nTwFitPars = 2;
 
-static const Double_t tdcThresh      = 12000.0;  // (30, 120, 1200 (seems good for S1X,S1Y,S2X), 12000(quartzs, S2Y)) in units of FADC channels
+static const Double_t tdcThresh      = 120.0;  // (30, 120, 1200 (seems good for S1X,S1Y,S2X), 12000(quartzs, S2Y)) in units of FADC channels
 static const Double_t twFitRangeLow  = 20.0;
-static const Double_t twFitRangeHigh = 200.0;
+static const Double_t twFitRangeHigh = 300.0;
 static const Double_t c0twParInit    = 1.0;
 static const Double_t c1twParInit    = 1.0;
 
@@ -57,7 +57,7 @@ static const Double_t maxScale     = 0.75;
 static const UInt_t lineWidth = 2;
 static const UInt_t lineStyle = 7;
 
-static const UInt_t  nbars[nPlanes]      = {13, 13, 14, 21};
+static const UInt_t  nbars[nPlanes]      = {13, 13, 14, 18};
 static const TString planeNames[nPlanes] = {"1x", "1y", "2x", "2y"};
 static const TString sideNames[nSides]   = {"pos", "neg"};
 static const TString twFitParNames[nTwFitPars]  = {"c_{1}", "c_{2}"};

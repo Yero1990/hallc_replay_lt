@@ -66,8 +66,8 @@ static const Double_t refAdcPulseTimeCutLow  = 300.0;  // Units of ns
 static const Double_t refAdcPulseTimeCutHigh = 370.0;  // Units of ns
 static const Double_t adcTdcTimeDiffCutLow   = -0.0; // Units of ns
 static const Double_t adcTdcTimeDiffCutHigh  = 60.0;  // Units of ns
-static const Double_t calEtotnormCutVal      = 0.1;    // Units of Normalized energy
-static const Double_t cerNpeSumCutVal        = 0.1;    // Units of NPE in aerogel
+static const Double_t calEtotnormCutVal      = 0.7;    // Units of Normalized energy
+static const Double_t cerNpeSumCutVal        = 0.5;    // Units of NPE in aerogel
 // static const Double_t adcTdcTimeDiffCutLow   = -6000.0;  // Units of ns
 // static const Double_t adcTdcTimeDiffCutHigh  = 1000.0;  // Units of ns
 
