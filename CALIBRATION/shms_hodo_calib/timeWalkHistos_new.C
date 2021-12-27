@@ -390,8 +390,11 @@ void timeWalkHistos_new(TString inputname, Int_t runNum, string SPEC_flg) {  //S
     cerNpeSumCut = (cerNpeSum < cerNpeSumCutVal); // JM 31-10-21: Editing cer cuts for good event selection. Added non-zero requirement
     if (calEtotnormCut || cerNpeSumCut) continue;
     
-    if (!good_hits) continue; 
-    // if (!(good_two_ended_hits_1x && good_two_ended_hits_1y && good_two_ended_hits_2x && good_two_ended_hits_2y)) continue; //C.Y. Added 2-ended hit requirement
+    //if (!good_hits) continue; 
+    //if (!(good_two_ended_hits_1x && good_two_ended_hits_1y && good_two_ended_hits_2x && good_two_ended_hits_2y)) continue; //C.Y. Added 2-ended hit requirement
+    
+    if (!(good_hits && good_two_ended_hits_1x && good_two_ended_hits_1y && good_two_ended_hits_2x && good_two_ended_hits_2y)) continue; //C.Y. Added 2-ended hit requirement         
+
     //cout << "evt = " << ievent << endl;
     //cout << "phod_1xnhits = " << phod_1xnhits << endl;
     //if(good_two_ended_hits_1x){
