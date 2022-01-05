@@ -41,7 +41,7 @@ static const UInt_t nBarsMax   = 21;
 static const UInt_t nTwFitPars = 2;
 
 //C.Y. Dec 09, 2021 | use tdcThresh parameter for scints and quartz independenly
-static const Double_t tdcThresh  = 120.0;
+static const Double_t tdcThresh  = 1200.0;
 
 //static const Double_t tdcThresh_scint  = 1200.0;  //  units of FADC channels
 //static const Double_t tdcThresh_quartz = 1200.0;  // units of FADC channels   
