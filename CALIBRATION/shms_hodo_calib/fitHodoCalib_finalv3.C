@@ -127,8 +127,8 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
   TString npdc_xpfp = "P.dc.xp_fp";
   TString npdc_ypfp = "P.dc.yp_fp";
   
-//ePID CUT NOTICE
-  Double_t etrknrm_low_cut = 0.85;
+  //ePID CUT NOTICE
+  Double_t etrknrm_low_cut = 0.7;
   Double_t npngcer_npeSum_low_cut = 0.5;
   Double_t betanotrack_low_cut = 0.5;
   Double_t betanotrack_hi_cut = 1.5;
@@ -226,7 +226,7 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
   TBranch *br_good_hod_2x_nhits = T->Branch("br_good_hod_2x_hit", &good_hod_2x_nhits, "good_hod_2x_nhits/I");
   TBranch *br_good_hod_2y_nhits = T->Branch("br_good_hod_2y_hit", &good_hod_2y_nhits, "good_hod_2y_nhits/I");
   TBranch *br_single_hit_flg    = T->Branch("br_single_hit_flg",  &single_hit_flg,    "single_hit_flg/b");
-
+   
   
   /*******Define Canvas and Histograms*******/
 
@@ -432,17 +432,29 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
   //**************************************************************//
   
   cout << "Initializing 1st Pass of Event Loop: " << endl;
-  Long64_t evtCnt = 0;
 
   Long64_t nentries = T->GetEntries();
-  
-  static Bool_t mean_time_flg[992247][PLANES][21] = {false}; //C.Y. nned to add this to explicitly apply cut in diff. parts of code
+ 
 
- //Loop over all entries
+  // dynamically allocate 3d array
+  Bool_t ***mean_time_flg = new Bool_t **[nentries]();
+  
+  for (int i = 0; i < nentries; i++) {
+    mean_time_flg[i] = new Bool_t *[PLANES]();
+    for (int j = 0; j < PLANES; j++){
+      mean_time_flg[i][j] = new Bool_t[21]();
+      for (int k = 0; k < 21; k++){
+	mean_time_flg[i][j][k] = false;
+      } // end k loop over paddles
+    } // end j loop over planes
+  } // end i loop over nentries
+
+
+  //Loop over all entries
   for(Long64_t i=0; i<nentries; i++)
     {
       T->GetEntry(i);  
-
+      
       pcal = pcal_etrkNorm>etrknrm_low_cut;
       pngcer = pngcer_npeSum>npngcer_npeSum_low_cut;
       pdctrk = pdc_ntrack>0.0;  // Seems to work. One could potentially improve hit filtering further by requiring a single reconstructed track, but efficiency may suffer. 
@@ -460,8 +472,8 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 	      //Loop over pmt
 	      for (Int_t ipmt = 0; ipmt < maxPMT[npl]; ipmt++)
 		{	        
-
-//HARD CUT NOTICE		  
+		  
+		  //HARD CUT NOTICE		  
 		  if(TdcTimeTWCorr[npl][0][ipmt] < 200. && TdcTimeTWCorr[npl][1][ipmt] < 200. && pcal_etrkNorm>etrknrm_low_cut)
 		    {
 		      //Fill Average TW Corr TDC Time
@@ -474,18 +486,18 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 	    }// end plane loop
 	  
 	} //END PID ELECTRON CUT
-
-      cout << std::setprecision(2) << double(i) / nentries * 100. << "  % " << std::flush << "\r";
-
-    } //end loop over entries
       
+      cout << std::setprecision(2) << double(i) / nentries * 100. << "  % " << std::flush << "\r";
+      
+    } //end loop over entries
+  
       //Set cut on StdDev. 
       // Because of the small flat background of photon hits at high rates, a 1 StdDev cut ends up being generously wider than a Gaussian 1 sigma cut would be. 
       // At very low rates (unlikely to be encountered in the SHMS) there may be some benefit in increasing nSig to 2 for higher efficiency. (This suggestion may be relevant to the HMS.)
-//HARD CUT NOTICE
-      nSig = 1;    
-
-
+  //HARD CUT NOTICE
+  nSig = 1;    
+  
+  
   //************************************//
   //    SECOND PASS OF EVENT LOOP       //
   //************************************//
@@ -496,8 +508,7 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
     {
       
       T->GetEntry(i);  
-      //cout << "ientry = " << i << endl;
-
+      
       //initialize good paddle hit counter of hodo planes (resets per entry) 
       good_hod_1x_nhits = 0;      
       good_hod_1y_nhits = 0;
@@ -512,10 +523,7 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
       pid_pelec = pcal&&pngcer&&pdctrk;
       if (cosmic_flag)  pid_pelec = betaCut&&pdctrk; 
       
-      //cout << " --- > nentry = " << i << endl;
-      //cout << "1X hod plane hits (no cuts) " << hod_nhits[0] << endl;
       
-     
       // ----------------- "LITE" HIT FILTERING (PART 1) -----------------
 
       if(pid_pelec) // APPLY PID CUT TO SELECT CLEAN ELECTRONS
@@ -525,8 +533,6 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 	  for (Int_t npl = 0; npl < PLANES; npl++ )
 	    {
 	      
-	      //cout << "plane = " << npl << endl;
-	   
 	      //Loop over plane side
 	      for (Int_t side = 0; side < SIDES; side++)
 		{
@@ -545,7 +551,7 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 		      
 		      
 		      //Add Time Cuts to get rid of kBig - kBig values, which yielded high evt density at zero
-//HARD CUT NOTICE
+		      //HARD CUT NOTICE
 		      if(TdcTimeTWCorr[npl][0][ipmt] < 200. && TdcTimeTWCorr[npl][1][ipmt] < 200.)
 			{
 			  
@@ -557,23 +563,22 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 			      if ( (((TdcTimeTWCorr[npl][0][ipmt] + TdcTimeTWCorr[npl][1][ipmt])/2.) > (Mean-nSig*StdDev)) &&  (((TdcTimeTWCorr[npl][0][ipmt] + TdcTimeTWCorr[npl][1][ipmt])/2.) < (Mean+nSig*StdDev)))
 				{				  				  
 				  mean_time_flg[i][npl][ipmt] = true;
-				  //cout << "paddle (passed mean_time cut) = " << ipmt << endl;
+				  
 				  // increment good plane hit counter 
 				  if(npl==0){				    
 				    good_hod_1x_nhits++;
-				    //cout << "good_hod_1x_nhits = " << good_hod_1x_nhits << endl;
+				   
 				  }
 				  if(npl==1){ 
 				    good_hod_1y_nhits++;
-				    //cout << "good_hod_1y_nhits = " << good_hod_1y_nhits << endl;
+				 
 				  }			    
 				  if(npl==2){              
 				    good_hod_2x_nhits++;
-				    //cout << "good_hod_2x_nhits = " << good_hod_2x_nhits << endl;
+				    
 				  }			      
 				  if(npl==3){            
-				    good_hod_2y_nhits++;
-				    //cout << "good_hod_2y_nhits = " << good_hod_2y_nhits << endl;
+				    good_hod_2y_nhits++;				    
 				    
 				  }	        		    
 				  
@@ -599,22 +604,11 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
       H_good_hod1y_nhits->Fill(good_hod_1y_nhits); 
       H_good_hod2x_nhits->Fill(good_hod_2x_nhits); 
       H_good_hod2y_nhits->Fill(good_hod_2y_nhits); 
-      
-      /*
-      cout << "good_hod_1x_nhits (total) = " << good_hod_1x_nhits << endl;
-      cout << "good_hod_1y_nhits (total) = " << good_hod_1y_nhits << endl;
-      cout << "good_hod_2x_nhits (total) = " << good_hod_2x_nhits << endl;
-      cout << "good_hod_2y_nhits (total) = " << good_hod_2y_nhits << endl;
-      */
+     
       //Define good plane hit
       if( (good_hod_1x_nhits==1) && (good_hod_1y_nhits==1) && (good_hod_2x_nhits==1) && (good_hod_2y_nhits==1) ) { single_hit_flg = true; } 
       
-  
-      //cout << "single_hit_flag = " << single_hit_flg << endl;
-      
-
       H_good_hod_nhits->Fill(single_hit_flg);
-
       
       //Fill branches with good hits per plane information
       br_good_hod_1x_nhits->Fill();
@@ -622,17 +616,14 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
       br_good_hod_2x_nhits->Fill();
       br_good_hod_2y_nhits->Fill();
       br_single_hit_flg->Fill();
-
+      
       
       // ----------------- "LITE" HIT FILTERING (PART 2) -----------------
-       if(pid_pelec && single_hit_flg)
+      if(pid_pelec && single_hit_flg)
 	{
-	  //cout << "ientry_passed = " << i << endl;
 	  //Loop over hodo planes
 	  for (Int_t npl = 0; npl < PLANES; npl++ )
-	    {
-	      
-	      //cout << "plane = " << npl << endl;
+	    {	      
 	      
 	      //Loop over plane side
 	      for (Int_t side = 0; side < SIDES; side++)
@@ -648,14 +639,15 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 		      Mean =  h1Hist_TWAvg[npl][ipmt]->GetMean();
 		      
 		      //Add Time Cuts to get rid of kBig - kBig values, which yielded high evt density at zero
-//HARD CUT NOTICE
+		      
+		      //HARD CUT NOTICE
 		      if(TdcTimeTWCorr[npl][0][ipmt] < 200. && TdcTimeTWCorr[npl][1][ipmt] < 200.)
 			{
 			  
 			  //require only one side, as a time diff between the two ends of a paddle is take
 			  if (side==0)  
 			    {
-			      //cout << "padlle = " << ipmt << endl;
+			      
 
 			      if (npl==0 || npl==2)
 				{
@@ -687,7 +679,7 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 				} //end meantime +/- nSig*StdDev CUT of TW Corr Time
 			      
 			    } // end single-side requirement
-
+			  
 			} //end time cuts
 		      
 		    } //end pmt loop
@@ -697,9 +689,9 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 	    } //end plane loop
 	  
 	} // end pid-electron AND single plane hit CUTS (IMPORTANT ! ! ! )
-       
+      
     } //end entry loop
-
+  
   //Draw good hits histograms per plane, and overall for 4 planes single hit.
   good_hod1x_Hit_canv->cd();
   H_good_hod1x_nhits->Draw();
@@ -715,20 +707,20 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 
   good_hodSingleHit_canv->cd();
   H_good_hod_nhits->Draw();
-
- 
-//The technique to fit the parameters phodo_velFit and phodo_cableFit is explained on page 4 and Figure 6 of the hodo calibration document v2 at https://hallcweb.jlab.org/doc-private/ShowDocument?docid=970 . 
- 
+  
+  
+  //The technique to fit the parameters phodo_velFit and phodo_cableFit is explained on page 4 and Figure 6 of the hodo calibration document v2 at https://hallcweb.jlab.org/doc-private/ShowDocument?docid=970 . 
+  
   cout << " Starting fitting slope and intercept of histograms" << endl;
-
- for (Int_t npl = 0; npl < PLANES; npl++ )
+  
+  for (Int_t npl = 0; npl < PLANES; npl++ )
     {      
-
+      
       //--- Create Canvas to store TW-Corr Time/Dist vs. trk position ---
-
+      
       TWCorr_v_TrkPos_canv[npl] = new TCanvas(Form("TWCorrTime_v_Pos%d", npl), Form("2DTWCorr_Time, plane %s", pl_names[npl].c_str()),  1000, 700);
       TWDiff_v_TrkPos_canv[npl] = new TCanvas(Form("TWCorrDist_v_Pos%d", npl), Form("2DTWCorr_Dist, plane %s", pl_names[npl].c_str()),  1000, 700);
-
+      
       TWAvg_canv[npl] = new TCanvas(Form("TWAvg_%d", npl), Form("TWAvg, plane %s", pl_names[npl].c_str()),  1000, 700);
       TWAvg_canv_2D[npl] = new TCanvas(Form("TWAvg2D_%d", npl), Form("TWAvg2D, plane %s", pl_names[npl].c_str()),  1000, 700);
       Diff_TWDistTrkPos_canv[npl] = new TCanvas(Form("Diff_TrkDist_%d", npl), Form("Diff_TrkDist, plane %s", pl_names[npl].c_str()),  1000, 700);
@@ -740,7 +732,7 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 	TWAvg_canv_2D[npl]->Divide(4,4);
 	Diff_TWDistTrkPos_canv[npl]->Divide(4,4);
       }
-     
+      
       else if (npl==3) {
 	TWCorr_v_TrkPos_canv[npl]->Divide(7,3);
 	TWDiff_v_TrkPos_canv[npl]->Divide(7,3);
@@ -767,14 +759,14 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 	  }
 	  
 	  Int_t fit_status;
-
+	  
 	  //Loop over pmt
 	  for (Int_t ipmt = 0; ipmt < maxPMT[npl]; ipmt++)
 	    {	        
 	     
 	      TWUnCorr_canv[npl][side]->cd(ipmt+1);
 	      h2Hist_TW_UnCorr[npl][side][ipmt]->Draw("colz");
-	      	 
+	      
 	      TWCorr_canv[npl][side]->cd(ipmt+1);
 	      h2Hist_TW_Corr[npl][side][ipmt]->Draw("colz");
 	      fit_status=-1;
@@ -822,16 +814,24 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 		    if(fit_status==-1 || (phodo_velArr[npl][ipmt] < phodo_velMin[npl] || phodo_velArr[npl][ipmt] > phodo_velMax[npl]) ) {
 		      
 		      
-		      cout << Form("PLANE 1X, PADDLE %d : fit velocity, %.3f cm/ns is out-of-range [%.3f, %.3f] cm/ns ", (ipmt+1), phodo_velArr[npl][ipmt], phodo_velMin[npl], phodo_velMax[npl] ) << endl;
-		      cout <<    "***********************" << endl;
-		      cout << "" << endl;
-		      cout << Form("---- PLANE 1X, PADDLE %d : ORIGINAL FIT RESULTS ----", ipmt+1) << endl;                                                                                                                               
-		      cout << Form("phodo_velocity (1/fit_slope) = %.3f ", phodo_velArr[npl][ipmt]) << endl;                                                                                                                     
-		      cout << Form("phodo_cable_offset (y-int.) = %.3f", fit1x->GetParameter(1)) << endl;                                                                                                                                                
-		      cout << "-------------------------------" << endl;   
-		      cout << "" << endl;
-		      cout << Form(" Will try re-fitting line with fit function: Y = 1 / (%.3f cm/ns) * X + b", phodo_velSet[npl] ) << endl;
-		      cout << "" << endl;
+		      if(phodo_velArr[npl][ipmt] < phodo_velMin[npl] || phodo_velArr[npl][ipmt] > phodo_velMax[npl]) { 
+			cout << Form("PLANE 1X, PADDLE %d : fit velocity, %.3f cm/ns is out-of-range [%.3f, %.3f] cm/ns ", (ipmt+1), phodo_velArr[npl][ipmt], phodo_velMin[npl], phodo_velMax[npl] ) << endl;
+			cout <<    "***********************" << endl;
+			cout << "" << endl;
+			cout << Form("---- PLANE 1X, PADDLE %d : ORIGINAL FIT RESULTS ----", ipmt+1) << endl;                                                                                                                               
+			cout << Form("phodo_velocity (1/fit_slope) = %.3f ", phodo_velArr[npl][ipmt]) << endl;                                                                                                                     
+			cout << Form("phodo_cable_offset (y-int.) = %.3f", fit1x->GetParameter(1)) << endl;                                                                                                                                                
+			cout << "-------------------------------" << endl;   
+			cout << "" << endl;
+			cout << Form(" Will try re-fitting line with fit function: Y = 1 / (%.3f cm/ns) * X + b", phodo_velSet[npl] ) << endl;
+			cout << "" << endl;
+		      }
+		      else if (fit_status==-1){
+			cout << "FIT FAILED FOR . . . " << endl;
+			cout << Form("PLANE 1X, PADDLE %d : fit velocity, %.3f cm/ns  ", (ipmt+1), phodo_velArr[npl][ipmt] ) << endl;
+			cout << Form(" Will try re-fitting line with fit function: Y = 1 / (%.3f cm/ns) * X + b", phodo_velSet[npl] ) << endl;  
+			cout << "" << endl;  
+		      }
 		      
 		      //Re-Fit TW Corr Time vs. Trk Pos		   
 		      fit_status = h2Hist_TW_Corr_v_TrkPos[npl][ipmt]->Fit("rfit1x", "QR+");  // The '+' is to overlay fit with previous original fit
@@ -881,18 +881,25 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 		    
 		    if(fit_status==-1 || (phodo_velArr[npl][ipmt] < phodo_velMin[npl] || phodo_velArr[npl][ipmt] > phodo_velMax[npl]) ) {
 		      
-		      
-		      cout << Form("PLANE 1Y, PADDLE %d : fit velocity, %.3f cm/ns is out-of-range [%.3f, %.3f] cm/ns ", (ipmt+1), phodo_velArr[npl][ipmt], phodo_velMin[npl], phodo_velMax[npl] ) << endl;
-		      cout <<    "***********************" << endl;
-		      cout << "" << endl;
-		      cout << Form("---- PLANE 1Y, PADDLE %d : ORIGINAL FIT RESULTS ----", ipmt+1) << endl;                                                                                                                               
-		      cout << Form("phodo_velocity (1/fit_slope) = %.3f ", phodo_velArr[npl][ipmt]) << endl;                                                                                                                     
-		      cout << Form("phodo_cable_offset (y-int.) = %.3f", fit1y->GetParameter(1)) << endl;                                                                                                                                                
-		      cout << "-------------------------------" << endl;   
-		      cout << "" << endl;
-		      cout << Form(" Will try re-fitting line with fit function: Y = 1 / (%.3f cm/ns) * X + b", phodo_velSet[npl] ) << endl;
-		      cout << "" << endl;
-		      
+		      if (phodo_velArr[npl][ipmt] < phodo_velMin[npl] || phodo_velArr[npl][ipmt] > phodo_velMax[npl]){
+			cout << Form("PLANE 1Y, PADDLE %d : fit velocity, %.3f cm/ns is out-of-range [%.3f, %.3f] cm/ns ", (ipmt+1), phodo_velArr[npl][ipmt], phodo_velMin[npl], phodo_velMax[npl] ) << endl;
+			cout <<    "***********************" << endl;
+			cout << "" << endl;
+			cout << Form("---- PLANE 1Y, PADDLE %d : ORIGINAL FIT RESULTS ----", ipmt+1) << endl;                                                                                                                               
+			cout << Form("phodo_velocity (1/fit_slope) = %.3f ", phodo_velArr[npl][ipmt]) << endl;                                                                                                                     
+			cout << Form("phodo_cable_offset (y-int.) = %.3f", fit1y->GetParameter(1)) << endl;                                                                                                                                                
+			cout << "-------------------------------" << endl;   
+			cout << "" << endl;
+			cout << Form(" Will try re-fitting line with fit function: Y = 1 / (%.3f cm/ns) * X + b", phodo_velSet[npl] ) << endl;
+			cout << "" << endl;
+		      }
+		      else if (fit_status==-1){                                                                                                
+                        cout << "FIT FAILED FOR . . . " << endl;                                                                                                          
+                        cout << Form("PLANE 1Y, PADDLE %d : fit velocity, %.3f cm/ns  ", (ipmt+1), phodo_velArr[npl][ipmt] ) << endl;                                     
+                        cout << Form(" Will try re-fitting line with fit function: Y = 1 / (%.3f cm/ns) * X + b", phodo_velSet[npl] ) << endl;                                                
+                        cout << "" << endl;                                                                                                                                                 
+                      }  
+
 		      //Re-Fit TW Corr Time vs. Trk Pos		   
 		      fit_status = h2Hist_TW_Corr_v_TrkPos[npl][ipmt]->Fit("rfit1y", "QR+");
 		      rfit1y->SetLineColor(kBlack);
@@ -944,22 +951,29 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 
 		     if(fit_status==-1 || (phodo_velArr[npl][ipmt] < phodo_velMin[npl] || phodo_velArr[npl][ipmt] > phodo_velMax[npl]) ) {
 		      
-		      
-		      cout << Form("PLANE 2X, PADDLE %d : fit velocity, %.3f cm/ns is out-of-range [%.3f, %.3f] cm/ns ", (ipmt+1), phodo_velArr[npl][ipmt], phodo_velMin[npl], phodo_velMax[npl] ) << endl;
-		      cout <<    "***********************" << endl;
-		      cout << "" << endl;
-		      cout << Form("---- PLANE 2X, PADDLE %d : ORIGINAL FIT RESULTS ----", ipmt+1) << endl;                                                                                                                               
-		      cout << Form("phodo_velocity (1/fit_slope) = %.3f ", phodo_velArr[npl][ipmt]) << endl;                                                                                                                     
-		      cout << Form("phodo_cable_offset (y-int.) = %.3f", fit2x->GetParameter(1)) << endl;                                                                                                                                                
-		      cout << "-------------------------------" << endl;   
-		      cout << "" << endl;
-		      cout << Form(" Will try re-fitting line with fit function: Y = 1 / (%.3f cm/ns) * X + b", phodo_velSet[npl] ) << endl;
-		      cout << "" << endl;
-		      
-		      //Re-Fit TW Corr Time vs. Trk Pos		   
-		      fit_status = h2Hist_TW_Corr_v_TrkPos[npl][ipmt]->Fit("rfit2x", "QR+");
-		      rfit2x->SetLineColor(kBlack);
-		      rfit2x->SetLineStyle(9);
+		       if(phodo_velArr[npl][ipmt] < phodo_velMin[npl] || phodo_velArr[npl][ipmt] > phodo_velMax[npl]) {
+			 cout << Form("PLANE 2X, PADDLE %d : fit velocity, %.3f cm/ns is out-of-range [%.3f, %.3f] cm/ns ", (ipmt+1), phodo_velArr[npl][ipmt], phodo_velMin[npl], phodo_velMax[npl] ) << endl;
+			 cout <<    "***********************" << endl;
+			 cout << "" << endl;
+			 cout << Form("---- PLANE 2X, PADDLE %d : ORIGINAL FIT RESULTS ----", ipmt+1) << endl;                                                                                                                               
+			 cout << Form("phodo_velocity (1/fit_slope) = %.3f ", phodo_velArr[npl][ipmt]) << endl;                                                                                                                     
+			 cout << Form("phodo_cable_offset (y-int.) = %.3f", fit2x->GetParameter(1)) << endl;                                                                                                                                                
+			 cout << "-------------------------------" << endl;   
+			 cout << "" << endl;
+			 cout << Form(" Will try re-fitting line with fit function: Y = 1 / (%.3f cm/ns) * X + b", phodo_velSet[npl] ) << endl;
+			 cout << "" << endl;
+		       }
+		       else if (fit_status==-1){    
+			 cout << "FIT FAILED FOR . . . " << endl;                                                              
+			 cout << Form("PLANE 2X, PADDLE %d : fit velocity, %.3f cm/ns  ", (ipmt+1), phodo_velArr[npl][ipmt] ) << endl;                                 
+			 cout << Form(" Will try re-fitting line with fit function: Y = 1 / (%.3f cm/ns) * X + b", phodo_velSet[npl] ) << endl;                    
+			 cout << "" << endl;                                                                                                                                 
+		       }  
+		       
+		       //Re-Fit TW Corr Time vs. Trk Pos		   
+		       fit_status = h2Hist_TW_Corr_v_TrkPos[npl][ipmt]->Fit("rfit2x", "QR+");
+		       rfit2x->SetLineColor(kBlack);
+		       rfit2x->SetLineStyle(9);
 		      
 		      cout << Form("---- PLANE 2X, PADDLE %d : RE-FIT RESULTS ----", ipmt+1) << endl;
 		      cout << Form("phodo_velocity (1/fit_slope) = %.3f ", phodo_velSet[npl]) << endl;
@@ -1005,18 +1019,26 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 		    
 		    if(fit_status==-1 || (phodo_velArr[npl][ipmt] < phodo_velMin[npl] || phodo_velArr[npl][ipmt] > phodo_velMax[npl]) ) {
 		      
-		      
-		      cout << Form("PLANE 2Y, PADDLE %d : fit velocity, %.3f cm/ns is out-of-range [%.3f, %.3f] cm/ns ", (ipmt+1), phodo_velArr[npl][ipmt], phodo_velMin[npl], phodo_velMax[npl] ) << endl;
-		      cout <<    "***********************" << endl;
-		      cout << "" << endl;
-		      cout << Form("---- PLANE 2Y, PADDLE %d : ORIGINAL FIT RESULTS ----", ipmt+1) << endl;                                                                                                                               
-		      cout << Form("phodo_velocity (1/fit_slope) = %.3f ", phodo_velArr[npl][ipmt]) << endl;                                                                                                                     
-		      cout << Form("phodo_cable_offset (y-int.) = %.3f", fit2y->GetParameter(1)) << endl;                                                                                                                                                
-		      cout << "-------------------------------" << endl;   
-		      cout << "" << endl;
-		      cout << Form(" Will try re-fitting line with fit function: Y = 1 / (%.3f cm/ns) * X + b", phodo_velSet[npl] ) << endl;
-		      cout << "" << endl;
-		      
+		      if(phodo_velArr[npl][ipmt] < phodo_velMin[npl] || phodo_velArr[npl][ipmt] > phodo_velMax[npl]){
+			cout << Form("PLANE 2Y, PADDLE %d : fit velocity, %.3f cm/ns is out-of-range [%.3f, %.3f] cm/ns ", (ipmt+1), phodo_velArr[npl][ipmt], phodo_velMin[npl], phodo_velMax[npl] ) << endl;
+			cout <<    "***********************" << endl;
+			cout << "" << endl;
+			cout << Form("---- PLANE 2Y, PADDLE %d : ORIGINAL FIT RESULTS ----", ipmt+1) << endl;                                                                             
+			cout << Form("phodo_velocity (1/fit_slope) = %.3f ", phodo_velArr[npl][ipmt]) << endl;                                                                                    
+			cout << Form("phodo_cable_offset (y-int.) = %.3f", fit2y->GetParameter(1)) << endl;           
+			cout << "-------------------------------" << endl;   
+			cout << "" << endl;
+			cout << Form(" Will try re-fitting line with fit function: Y = 1 / (%.3f cm/ns) * X + b", phodo_velSet[npl] ) << endl;
+			cout << "" << endl;
+		      }
+
+		      else if (fit_status==-1){                                                                                                                                                              
+			cout << "FIT FAILED FOR . . . " << endl;                                                                                                                                             
+			cout << Form("PLANE 2Y, PADDLE %d : fit velocity, %.3f cm/ns  ", (ipmt+1), phodo_velArr[npl][ipmt] ) << endl;                                                                        
+			cout << Form(" Will try re-fitting line with fit function: Y = 1 / (%.3f cm/ns) * X + b", phodo_velSet[npl] ) << endl;                                                               
+			cout << "" << endl;                                                                                                                                                                  
+		      } 
+
 		      //Re-Fit TW Corr Time vs. Trk Pos		   
 		      fit_status = h2Hist_TW_Corr_v_TrkPos[npl][ipmt]->Fit("rfit2y", "QR+");
 		      rfit2y->SetLineColor(kBlack);
@@ -1266,9 +1288,7 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
      outPARAM << setw(26) << phodo_sigArr[0][ipmt] << ", " << setw(15) << phodo_sigArr[1][ipmt] << ", " << setw(15) << phodo_sigArr[2][ipmt] << ", " << setw(15) << phodo_sigArr[3][ipmt] << fixed << endl; 
    }
  }
- //Write Histograms to ROOT file
- //outROOT->Write();
- //outROOT->Close();
+ 
    
  cout << "FINISHED Getting Vp and Cable Fits . . . " << endl;
  cout << "Starting the code to fit Hodo Matrix . . . " << endl;                                                                                                                                                                                                                                                                                                                                
@@ -1282,6 +1302,14 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
     {
       T->GetEntry(i);  
       
+      //C.Y. Feb 16, 2022 | added pid cuts for use in "LITE" HIT FILTERING of this section of code
+      
+      pcal = pcal_etrkNorm>etrknrm_low_cut;
+      pngcer = pngcer_npeSum>npngcer_npeSum_low_cut;
+      pdctrk = pdc_ntrack>0.0; 
+      betaCut = beta>betanotrack_low_cut&& beta<betanotrack_hi_cut;
+      pid_pelec = pcal&&pngcer&&pdctrk;
+
       //Define some minimum requirements
       Bool_t x1_hit = hod_nhits[0] == 1;
       Bool_t y1_hit = hod_nhits[1] == 1;
@@ -1293,10 +1321,20 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 		      TrackXPos[1]<200&&TrackYPos[1]<200&&
 		      TrackXPos[2]<200&&TrackYPos[2]<200&&
 		      TrackXPos[3]<200&&TrackYPos[3]<200;
-      betaCut=kTRUE;
-      if (cosmic_flag)  betaCut = beta>betanotrack_low_cut&& beta<betanotrack_hi_cut;
-	//require each plane to have ONLY a SINGLE HIT, and hod track coord. to be reasonable (NOT kBig)
-	if (x1_hit&&y1_hit&&x2_hit&&y2_hit&&hodTrk&&betaCut)
+      //betaCut=kTRUE;
+      //if (cosmic_flag)  betaCut = beta>betanotrack_low_cut&& beta<betanotrack_hi_cut;
+      
+      //C.Y. Re-write above beta cut code, same as it is done in other parts of this code
+      if (cosmic_flag) pid_pelec = betaCut&&pdctrk;
+
+      //require each plane to have ONLY a SINGLE HIT, and hod track coord. to be reasonable (NOT kBig)
+      //if (x1_hit&&y1_hit&&x2_hit&&y2_hit&&hodTrk&&betaCut) 
+      
+      // ----------------- "LITE HIT FILTERING (PART 4)" ----------------
+      // C.Y. Feb 26, 2022 | added "LITE" hit filtering 
+      // in hopes of reducing possible background that might be introduced in the LCoeff parameters extracted from the matrix fit.
+      
+      if(pid_pelec && single_hit_flg && hodTrk)
 	  {
 	    
 	    //goodhit: If both ends of a paddle had a tdc hit
@@ -1310,11 +1348,14 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 	    //Loop over hodo planes
 	    for (Int_t npl = 0; npl < PLANES; npl++ )
 	      {
-
+		
 		//loop over paddles
 		for (Int_t bar = 1; bar <= maxPMT[npl]; bar++ )
 		  {
-
+		    
+		    
+		    if (mean_time_flg[i][npl][bar-1]==0) continue; 
+		    
 		    //Dec. 17, 2021 C.Y.  increase the cuts, as it seems after hodo3of4 trigger alignment, this needed to be expanded to at least 125
 		    // Also,  why is it we are only applying a upper cut, and NOT a lower cut?
 		    //require good tdc hit on both ends 
@@ -1445,7 +1486,7 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 
 	  } //end single hit requirement
           
-       
+	cout << std::setprecision(2) << double(i) / nentries * 100. << "  % " << std::flush << "\r";
 
     } //end entry loop
 
@@ -1505,7 +1546,9 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
       }
 
 
-    // C.Y. Jan 22 | CALCULATE BETA
+    //============================================================
+    // C.Y. Jan 22, 2022 | CALCULATE BETA IN THE CALIBRATION CODE
+    //============================================================
 
     //Define useful varibales for beta calculation
     Double_t scinTrnsCoord, scinLongCoord;
@@ -1559,8 +1602,9 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 	for(Int_t ipad=0; ipad<21; ipad++)
 	  {
 	    
-	    fHodoPos_c2[npl][ipad]   = GetParam("../../PARAM/SHMS/HODO/phodo_TWcalib_12055_twoEndedHits_1200mV.param", "pc2_Pos", npl, ipad, 21 );
-	    fHodoNeg_c2[npl][ipad]   = GetParam("../../PARAM/SHMS/HODO/phodo_TWcalib_12055_twoEndedHits_1200mV.param", "pc2_Neg", npl, ipad, 21 );
+	    // Get TW parameters from the standard param file that gets read by HCANA
+	    fHodoPos_c2[npl][ipad]   = GetParam("../../PARAM/SHMS/HODO/phodo_TWcalib.param", "pc2_Pos", npl, ipad, 21 );
+	    fHodoNeg_c2[npl][ipad]   = GetParam("../../PARAM/SHMS/HODO/phodo_TWcalib.param", "pc2_Neg", npl, ipad, 21 );
 	    fHodo_LCoeff[npl][ipad]  = LCoeff[npl][ipad];
 	    fHodoVelFit[npl][ipad]   = phodo_velArr[npl][ipad];
 	    fHodoCableFit[npl][ipad] = phodo_cableArr[npl][ipad];
@@ -1572,25 +1616,26 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
     // NOTE: This part of the code will focus on using the hodo parameter files optained so far, and calculate the beta, exactly as it is calculated in hcana/src/THcHodoscope.cxx
     // This is in the testing phase . . . until commented otherwise
 
-    // example of calling function to read parameter
-    //GetParam("../../PARAM/SHMS/HODO/phodo_TWcalib_12055.param", "pc1_Pos", 2, 1, 21 );
-
+    
+    cout << "Calculating Hodoscope Beta . . . " << endl;
     // loop over each entry to calculate beta
     for(Long64_t i=0; i<nentries; i++)
       {
-
+	
 	T->GetEntry(i);
 	
-	// "HIT FILTERING LITE (PART4)"
+	// --------- "HIT FILTERING LITE (PART 5) ------------"
+	pcal = pcal_etrkNorm>etrknrm_low_cut;
+	pngcer = pngcer_npeSum>npngcer_npeSum_low_cut;
+	pdctrk = pdc_ntrack>0.0; 
+	betaCut = beta>betanotrack_low_cut&& beta<betanotrack_hi_cut;
+	pid_pelec = pcal&&pngcer&&pdctrk;
+	
+	if (cosmic_flag)  pid_pelec = betaCut&&pdctrk; 
 
-	//cout << "---> ientry = " << i  << endl;
-	//cout << "single hit flag = " << single_hit_flg << endl;
-	
-	if(single_hit_flg==0) continue;  //skip entry if criteria not met for (single-hit + PID + meantim+/-stdDev cut) per plane
-	
-	//cout << "-- weighted beta calc --" << endl;                                                                                                               
+	 //apply (single-hit + PID) per plane
+	if(pid_pelec && single_hit_flg) { 
        
-	//cout << "---> ientry_passed = " << i << endl;
 
 	//reset counters                                                                                                                                      
 	sumW = 0.;                                                                                                                              
@@ -1608,7 +1653,7 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 	//Loop over hodo planes
 	for (Int_t npl = 0; npl < PLANES; npl++ )
 	  {
-	    //cout << "plane = " << npl << endl;  
+	   
 
 	    // ------- define scin Coord. (same as in THcHodoscope.cxx) -----
 	    if ( ( npl == 0 ) || ( npl == 2 ) )
@@ -1637,11 +1682,10 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 		//cout << "ientry = " << i << endl; 
 		//cout << "plane = " << npl << endl; 
 		//cout << "ipmt = " << ipmt << endl;  
-                //cout << "tdc_time_uncorr: timep, timen = " << timep << ", " << timen << endl;                                                                
+                //cout << "tdc_time_uncorr: timep, timen = " << timep << ", " << timen << endl; 
 
 		//require finite tdc times at both ends of a paddle
-		//if(abs(TdcTimeUnCorr[npl][0][ipmt]) > 200. || abs(TdcTimeUnCorr[npl][1][ipmt]) > 200.) continue;
-	       		    
+	      
 		//PMT fADC Pulse Amplitude (mV)
 		adcamp_pos = AdcPulseAmp[npl][0][ipmt];
 		adcamp_neg = AdcPulseAmp[npl][1][ipmt];
@@ -1650,15 +1694,6 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 		timep = TdcTimeUnCorr[npl][0][ipmt];
 		timen = TdcTimeUnCorr[npl][1][ipmt];
 		
-		//----- NOTES from THcHodoscope.cxx -----				  
-		
-		//cout << "-- weighted beta calc --" << endl;                                                                                                  
-                //cout << "ientry = " << i << endl;                                                                                                            
-                //cout << "plane = " << npl << endl;                                                                                                           
-                //cout << "paddle = " << ipmt << endl;                                                                                            				  	
-                //cout << "adcamp_pos, adcamp_neg = " << adcamp_pos << ", " << adcamp_neg << endl;  
-		
-		//cout << "timep_uncorr, timen_uncorr = " << timep << ", " << timen << endl;
 		
 		pathp=scinLongCoord;
 		pathn=scinLongCoord;
@@ -1673,10 +1708,7 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 		tw_corr_neg= 1./pow(adcamp_neg/fTdc_Thrs,fHodoNeg_c2[npl][ipmt]) -  1./pow(200./fTdc_Thrs, fHodoNeg_c2[npl][ipmt]);              
 		timen += -tw_corr_neg- 2*fHodoCableFit[npl][ipmt] + fHodo_LCoeff[npl][ipmt]- pathn/fHodoVelFit[npl][ipmt];
 		scin_neg_time = timen;
-		
-		//cout << "tw_corr_pos, tw_corr_neg = " << tw_corr_pos << ", " << tw_corr_neg << endl;
-		//cout << "timep_corr, timen_corr = " << timep << ", " << timen << endl; 
-		//cout << " TdcTimeTWCorr[npl][0][ipmt],  TdcTimeTWCorr[npl][1][ipmt] = " <<  TdcTimeTWCorr[npl][0][ipmt] << ", " <<  TdcTimeTWCorr[npl][1][ipmt] << endl;
+	     
 	
 		//average corrected tdc time
 		scin_time  = ( scin_pos_time + scin_neg_time ) / 2.;
@@ -1699,14 +1731,7 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 		*/
 		zPosition = z[npl][ipmt];
 
-		/*  This '+=' in hcana is for summing multiple hits per pmt, but since here we requrire 1-hit per plane per event, we dont need to sum
-		    sumW  += scinWeight;
-		    sumT  += scinWeight * fTOFCalc[ih].scin_time;
-		    sumZ  += scinWeight * zPosition;
-		    sumZZ += scinWeight * ( zPosition * zPosition );
-		    sumTZ += scinWeight * zPosition * fTOFCalc[ih].scin_time;
-		*/
-
+	     
 		//sum over all paddle hits per evntry (since we currently require single-hit per plane, and 4-plane hits, we will alawys sum up to 4)
 		sumW  += scinWeight;
 		sumT  += scinWeight * scin_time;
@@ -1739,24 +1764,20 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 		//printf("%f \n", sumW * sumZZ);
 		//printf("%f \n", sumZ * sumZ);
 		//cout << "tmp (test) = " << (sumW * sumZZ - sumZ * sumZ) << endl;                                                                     
-                //cout << "tmpDenom (test) = " << (sumW * sumTZ - sumZ * sumT) << endl;  
+                //cout << "tmpDenom (test) = " << (sumW * sumTZ - sumZ * sumT) << endl;
+  
 	      } //END paddle loop
 
 	  } // END plane loop
 	
-	//cout << "tmp (sumW * sumZZ - sumZ * sumZ) = " << printf("%f", (sumW * sumZZ - sumZ * sumZ)) << endl;                                                                     
-        //cout << "tmpDenom (sumW * sumTZ - sumZ * sumT) = " << printf("%f", (sumW * sumTZ - sumZ * sumT)) << endl;       
-	
-       
-       
-	if (  tmpDenom  > ( 1 / 10000000000.0 ) ) {
+    
+	if (  TMath::Abs(tmpDenom)  > ( 1 / 10000000000.0 ) ) {
 	  
 	  //cout << "==== TMath::Abs( tmpDenom ) > ( 1 / 10000000000.0 ) ===" << endl;
 	  beta_calib = tmp/tmpDenom;
 	  beta_calib_1 = tmp_1/tmpDenom_1;
-
-	  //cout << "beta_calib = " << printf("%f", beta_calib) << endl;
 	  
+	 
 	  //cout << "-- weighted beta calc --" << endl;
 	  //cout << "ientry = " << i << endl;
 	  //cout << "plane = " << npl << endl;
@@ -1797,64 +1818,22 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
 	  
 		
 	  pathNorm = TMath::Sqrt( 1. + (pdc_xpfp * pdc_xpfp) +  (pdc_ypfp * pdc_ypfp) );
-	  //cout << "pdc_xpfp = " << printf("%f", pdc_xpfp) << endl;
-	  //cout << "pdc_ypfp = " << printf("%f", pdc_ypfp) << endl;
-	  //cout << "pathNorm = " << printf("%f", pathNorm) << endl;
+	  
 	  // Take angle into account
 	  beta_calib = beta_calib / pathNorm;
 	  beta_calib_1 = beta_calib_1 / pathNorm;
 	  //cout << "beta_calib / pathNorm = " << printf("%f", (beta_calib/pathNorm)) << endl;
 	  beta_calib = beta_calib / 29.979;    // velocity / c
 	  beta_calib_1 = beta_calib_1 / 29.979; 
-
-	  //cout << "(beta_calib / pathNorm) / 29.979 = " << printf("%f", (beta_calib/pathNorm)/29.979) << endl;
-	  //cout << "------------------------" << endl;
-	  ////-----		         		      
 	  
-	  //cout << "beta_calib = " << beta_calib << endl;
-	  //cout << "beta_calib (unweighted) = " << beta_calib_1 << endl; 
+	
 	  //Fill weighted histograms
 	  H_beta_calib_weighted->Fill(beta_calib);
 	  H_beta_calib_unweighted->Fill(beta_calib_1);
 	}
 	
+	} //end pid_pelec && single_hit_flg cut
 	
-	
-	
-	
-	//---------------------------------------------------------
-	// ---- SET Beta Weight = 1 for unweighted calculation ----
-	//---------------------------------------------------------
-	/*
-	  scinWeight = 1;
-	  
-	  sumW  = scinWeight;
-	  sumT  = scinWeight * scin_time;
-	  sumZ  = scinWeight * zPosition;
-	  sumZZ = scinWeight * ( zPosition * zPosition );
-	  sumTZ = scinWeight * zPosition * scin_time;
-	  
-	  tmp = sumW * sumZZ - sumZ * sumZ ;
-	  tmpDenom = sumW * sumTZ - sumZ * sumT;
-	  
-	  beta_calib = tmp / tmpDenom;
-	  
-	  pathNorm = TMath::Sqrt( 1. + (pdc_xpfp * pdc_xpfp) +  (pdc_ypfp * pdc_ypfp) );
-	  
-	  beta_calib = beta_calib / pathNorm;
-	  beta_calib = beta_calib / 29.979;    // velocity / c
-	  
-	  //Fill un-weighted histograms
-	  H_beta_calib_unweighted->Fill(beta_calib);
-	  //cout << "beta (un-weighted) = " << beta_calib << endl;
-	  */
-	
-	
-	    
-	 
-	
-	             
-
 	cout << std::setprecision(2) << double(i) / nentries * 100. << "  % " << std::flush << "\r";
 	
       } // end entry loop
@@ -1864,8 +1843,24 @@ void fitHodoCalib_finalv3(TString filename,Int_t runNUM,Bool_t cosmic_flag=kFALS
     
     beta_calibUnweighted_canv->cd(); 
     H_beta_calib_unweighted->Draw(); 
-   
+    
     //Write Histograms to ROOT file                                                                                                        
     outROOT->Write();                                                                                                                       
     outROOT->Close();
+    
+    // de-allocate memory of  3d dynamic array
+    for(int i = 0; i < nentries; i++){
+      
+      for(int j = 0; j < PLANES; j++){ 
+	
+	delete[] mean_time_flg[i][j];                                                                                                 
+	
+      }
+
+      delete[] mean_time_flg[i];
+    }
+    
+    delete[] mean_time_flg;
+    
+
 }
